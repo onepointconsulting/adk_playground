@@ -1,9 +1,11 @@
-from pathlib import Path
-from dotenv import load_dotenv
 import os
+from pathlib import Path
+
 import tomli
+from dotenv import load_dotenv
 
 load_dotenv()
+
 
 class Config:
     open_meteo_api_url = os.getenv("OPEN_METEO_API_URL")
@@ -23,8 +25,7 @@ class Config:
 
 cfg = Config()
 
+
 def load_config() -> dict:
     config_path = Path(cfg.agent_root_folder) / "config.toml"
     return tomli.loads(config_path.read_text(encoding="utf-8"))
-
-

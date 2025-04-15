@@ -1,20 +1,31 @@
 import datetime
 
 import openmeteo_requests
-from geopy.geocoders import Nominatim
-from geopy import geocoders
-import requests_cache
-from retry_requests import retry
 import pandas as pd
+import requests_cache
+from geopy import geocoders
+from geopy.geocoders import Nominatim
+from retry_requests import retry
+
 from adk_playground.config import cfg
 
 loc = Nominatim(user_agent="Geopy Library")
-cache_session = requests_cache.CachedSession('.cache', expire_after = cfg.cache_expiry)
-retry_session = retry(cache_session, retries = 5, backoff_factor = 0.2)
-openmeteo = openmeteo_requests.Client(session = retry_session)
+cache_session = requests_cache.CachedSession(".cache", expire_after=cfg.cache_expiry)
+retry_session = retry(cache_session, retries=5, backoff_factor=0.2)
+openmeteo = openmeteo_requests.Client(session=retry_session)
 
-current_weather_fields = ["temperature_2m", "precipitation", "relative_humidity_2m", "rain", "weather_code", "wind_speed_10m"]
-current_weather_fields_dict = {field: i for i, field in enumerate(current_weather_fields)}
+current_weather_fields = [
+    "temperature_2m",
+    "precipitation",
+    "relative_humidity_2m",
+    "rain",
+    "weather_code",
+    "wind_speed_10m",
+]
+current_weather_fields_dict = {
+    field: i for i, field in enumerate(current_weather_fields)
+}
+
 
 def get_weather(city: str) -> dict:
     """Retrieves the current weather report for a specified city using OpenWeatherMap API.
@@ -29,13 +40,27 @@ def get_weather(city: str) -> dict:
         # Configure the OWM instance
         getLoc = loc.geocode(city)
         assert getLoc, f"Failed to get location for city: {city}"
-        assert getLoc.latitude and getLoc.longitude, f"Failed to get latitude and longitude for city: {city}"
+        assert (
+            getLoc.latitude and getLoc.longitude
+        ), f"Failed to get latitude and longitude for city: {city}"
         latitude, longitude = getLoc.latitude, getLoc.longitude
         params = {
             "latitude": latitude,
             "longitude": longitude,
-            "hourly": ["temperature_2m", "relative_humidity_2m", "precipitation_probability", "apparent_temperature", "precipitation", "rain", "showers", "snowfall", "weather_code", "wind_speed_10m", "wind_speed_80m"],
-            "current": current_weather_fields
+            "hourly": [
+                "temperature_2m",
+                "relative_humidity_2m",
+                "precipitation_probability",
+                "apparent_temperature",
+                "precipitation",
+                "rain",
+                "showers",
+                "snowfall",
+                "weather_code",
+                "wind_speed_10m",
+                "wind_speed_80m",
+            ],
+            "current": current_weather_fields,
         }
         responses = openmeteo.weather_api(cfg.open_meteo_api_url, params=params)
         return {
@@ -63,12 +88,24 @@ def get_weather_current_str(city: str) -> str:
         if len(weather["result"]) > 0:
             result = weather["result"][0]
             current = result.Current()
-            current_temperature_2m = current.Variables(current_weather_fields_dict["temperature_2m"]).Value()
-            current_precipitation = current.Variables(current_weather_fields_dict["precipitation"]).Value()
-            current_relative_humidity_2m = current.Variables(current_weather_fields_dict["relative_humidity_2m"]).Value()
-            current_rain = current.Variables(current_weather_fields_dict["rain"]).Value()
-            current_weather_code = current.Variables(current_weather_fields_dict["weather_code"]).Value()
-            current_wind_speed_10m = current.Variables(current_weather_fields_dict["wind_speed_10m"]).Value()
+            current_temperature_2m = current.Variables(
+                current_weather_fields_dict["temperature_2m"]
+            ).Value()
+            current_precipitation = current.Variables(
+                current_weather_fields_dict["precipitation"]
+            ).Value()
+            current_relative_humidity_2m = current.Variables(
+                current_weather_fields_dict["relative_humidity_2m"]
+            ).Value()
+            current_rain = current.Variables(
+                current_weather_fields_dict["rain"]
+            ).Value()
+            current_weather_code = current.Variables(
+                current_weather_fields_dict["weather_code"]
+            ).Value()
+            current_wind_speed_10m = current.Variables(
+                current_weather_fields_dict["wind_speed_10m"]
+            ).Value()
 
             return f"""
 # Current weather in {city}:
@@ -84,7 +121,7 @@ Wind speed: {current_wind_speed_10m} m/s
             return "No weather data found"
     else:
         return weather["error_message"]
-    
+
 
 def get_weather_forecast_as_str(city: str) -> str:
     """Retrieves the future weather forecast for the following 7 days for a specified city using OpenWeatherMap API.
@@ -113,12 +150,14 @@ def get_weather_forecast_as_str(city: str) -> str:
             hourly_wind_speed_10m = hourly.Variables(9).ValuesAsNumpy()
             hourly_wind_speed_80m = hourly.Variables(10).ValuesAsNumpy()
 
-            hourly_data = {"date": pd.date_range(
-                start = pd.to_datetime(hourly.Time(), unit = "s", utc = True),
-                end = pd.to_datetime(hourly.TimeEnd(), unit = "s", utc = True),
-                freq = pd.Timedelta(seconds = hourly.Interval()),
-                inclusive = "left"
-            )}
+            hourly_data = {
+                "date": pd.date_range(
+                    start=pd.to_datetime(hourly.Time(), unit="s", utc=True),
+                    end=pd.to_datetime(hourly.TimeEnd(), unit="s", utc=True),
+                    freq=pd.Timedelta(seconds=hourly.Interval()),
+                    inclusive="left",
+                )
+            }
 
             hourly_data["temperature_2m"] = hourly_temperature_2m
             hourly_data["relative_humidity_2m"] = hourly_relative_humidity_2m
@@ -132,7 +171,7 @@ def get_weather_forecast_as_str(city: str) -> str:
             hourly_data["wind_speed_10m"] = hourly_wind_speed_10m
             hourly_data["wind_speed_80m"] = hourly_wind_speed_80m
 
-            hourly_dataframe = pd.DataFrame(data = hourly_data)
+            hourly_dataframe = pd.DataFrame(data=hourly_data)
 
             return f"""
 # Weather forecast for the following 7 days in {city}:
@@ -143,7 +182,7 @@ def get_weather_forecast_as_str(city: str) -> str:
             return "No weather data found"
     else:
         return weather["error_message"]
-    
+
 
 def get_current_time(city: str) -> dict:
     """Returns the current time in a specified city.
@@ -161,14 +200,10 @@ def get_current_time(city: str) -> dict:
     if not place:
         return {
             "status": "error",
-            "error_message": (
-                f"Sorry, I don't have timezone information for {city}."
-            ),
+            "error_message": (f"Sorry, I don't have timezone information for {city}."),
         }
-    
+
     tz = g.reverse_timezone((lat, lng))
     now = datetime.datetime.now(tz.pytz_timezone)
-    report = (
-        f'The current time in {city} is {now.strftime("%Y-%m-%d %H:%M:%S %Z%z")}'
-    )
+    report = f'The current time in {city} is {now.strftime("%Y-%m-%d %H:%M:%S %Z%z")}'
     return {"status": "success", "report": report}
