@@ -4,8 +4,12 @@ repos:
     hooks:
     -   id: black
         language_version: python3.13
+        types: [python]
+        files: ^adk_playground/
 -   repo: https://github.com/pycqa/isort
     rev: 5.13.2
     hooks:
     -   id: isort
-        name: isort (python) 
+        name: isort (python)
+        types: [python]
+        files: ^adk_playground/ 
