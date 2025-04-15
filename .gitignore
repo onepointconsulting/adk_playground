@@ -12,3 +12,4 @@ wheels/
 
 weather.md
 .cache.sqlite
+.python-version
